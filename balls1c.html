@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Design Your Life</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Roboto:wght@300&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            background: #e8e0da;
+            overflow-x: hidden;
+            font-family: 'Playfair Display', serif;
+        }
+
+        canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 0;
+        }
+
+        .placeholder {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            padding: 20px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 80%;
+            background: rgba(255, 255, 255, 0);
+            border: none;
+            font-size: 1.5rem;
+            padding: 10px;
+            resize: none;
+            color: #333;
+            font-family: 'Roboto', sans-serif;
+            outline: none;
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            margin-bottom: 10px;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        .stats {
+            font-size: 1.2rem;
+            color: #333;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .button {
+            font-size: 1.2rem;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+
+        .button:hover {
+            background-color: #45a049;
+        }
+
+        /* 存档界面 */
+        .archive-container {
+            display: none;
+            position: fixed;
+            top: 10%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            padding: 20px;
+            width: 50%;
+            height: 60%;
+            overflow-y: auto;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+            z-index: 3;
+        }
+
+        .archive-title {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+        }
+
+        .archive-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .delete-archive {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+
+        .close-archive {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+
+    <div class="placeholder">
+        <div class="toolbar">
+            <div class="stats" id="wordCount">Words: 0 | Characters: 0</div>
+            <div class="buttons">
+                <button class="button" id="copyBtn">Copy</button>
+                <button class="button" id="saveBtn">Save</button>
+                <button class="button" id="downloadBtn">Download TXT</button>
+                <button class="button" id="viewArchiveBtn">View Archive</button>
+            </div>
+        </div>
+        <textarea id="textInput" placeholder="Start typing your ideas..."></textarea>
+    </div>
+
+    <!-- 存档界面 -->
+    <div class="archive-container" id="archiveContainer">
+        <div class="archive-title">Saved Archives</div>
+        <div id="archiveList"></div>
+        <button class="close-archive" id="closeArchiveBtn">Close</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+        class Ball {
+            constructor() {
+                this.radius = Math.random() * 60 + 40;
+                this.x = Math.random() * (canvas.width - this.radius * 2) + this.radius;
+                this.y = Math.random() * (canvas.height - this.radius * 2) + this.radius;
+                this.vx = (Math.random() - 0.5) * 1.5;
+                this.vy = (Math.random() - 0.5) * 1.5;
+                this.hue = Math.random() * 360;
+            }
+
+            update() {
+                if (this.x + this.radius > canvas.width || this.x - this.radius < 0) {
+                    this.vx *= -1;
+                }
+                if (this.y + this.radius > canvas.height || this.y - this.radius < 0) {
+                    this.vy *= -1;
+                }
+                this.x += this.vx;
+                this.y += this.vy;
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = `hsla(${this.hue}, 70%, 60%, 0.3)`;
+                ctx.fill();
+            }
+        }
+
+        const balls = Array.from({ length: 7 }, () => new Ball());
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            balls.forEach(ball => {
+                ball.update();
+                ball.draw();
+            });
+
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+
+        if (localStorage.getItem('savedText')) {
+            textInput.value = localStorage.getItem('savedText');
+        }
+        
+        // 复制并清空文本框
+        document.getElementById('copyBtn').addEventListener('click', () => {
+            const textInput = document.getElementById('textInput');
+            textInput.select();
+            document.execCommand('copy');
+            textInput.value = '';
+            updateWordCount();
+        });
+
+        // 计算字数
+        function updateWordCount() {
+            const text = document.getElementById('textInput').value;
+            const words = text.split(/\s+/).filter(Boolean).length;
+            const characters = text.length;
+            document.getElementById('wordCount').textContent = `Words: ${words} | Characters: ${characters}`;
+        }
+
+        textInput.addEventListener('input', function() {
+            localStorage.setItem('savedText', textInput.value);
+            updateWordCount();
+        })
+        updateWordCount();
+
+        // 下载文本
+        document.getElementById('downloadBtn').addEventListener('click', () => {
+            const text = document.getElementById('textInput').value;
+            if (!text) return;
+
+            let fileName = prompt("Enter filename (leave empty for timestamp):");
+            if (!fileName) {
+                const now = new Date();
+                fileName = `${now.getFullYear()}${(now.getMonth()+1).toString().padStart(2,'0')}${now.getDate().toString().padStart(2,'0')}_` +
+                           `${now.getHours().toString().padStart(2,'0')}${now.getMinutes().toString().padStart(2,'0')}.txt`;
+            } else {
+                fileName += ".txt";
+            }
+
+            const blob = new Blob([text], { type: "text/plain" });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = fileName;
+            link.click();
+        });
+
+        // 存档
+        document.getElementById('saveBtn').addEventListener('click', () => {
+            const text = document.getElementById('textInput').value;
+            if (!text) return;
+            
+            const archives = JSON.parse(localStorage.getItem('archives')) || [];
+            archives.push(text);
+            localStorage.setItem('archives', JSON.stringify(archives));
+        });
+
+        // 查看存档
+        document.getElementById('viewArchiveBtn').addEventListener('click', () => {
+            const archiveList = document.getElementById('archiveList');
+            archiveList.innerHTML = "";
+            const archives = JSON.parse(localStorage.getItem('archives')) || [];
+
+            archives.forEach((text, index) => {
+                const item = document.createElement('div');
+                item.classList.add('archive-item');
+                item.innerHTML = `<span>${text}</span> <button class="delete-archive" data-index="${index}">x</button>`;
+                archiveList.appendChild(item);
+            });
+
+            document.getElementById('archiveContainer').style.display = 'block';
+
+            document.querySelectorAll('.delete-archive').forEach(btn => {
+                btn.addEventListener('click', (event) => {
+                    const index = event.target.getAttribute('data-index');
+                    archives.splice(index, 1);
+                    localStorage.setItem('archives', JSON.stringify(archives));
+                    event.target.parentElement.remove();
+                });
+            });
+        });
+
+        document.getElementById('closeArchiveBtn').addEventListener('click', () => {
+            document.getElementById('archiveContainer').style.display = 'none';
+        });
+    </script>
+</body>
+</html>
+
+
+
